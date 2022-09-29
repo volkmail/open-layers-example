@@ -1,0 +1,48 @@
+.clinics {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.clinics_list {
+    margin-right: 50px;
+    padding: 5px;
+}
+
+.clinics_list > ul {
+    list-style: none;
+}
+
+.clinics_list > h3 {
+    padding-left: 5px;
+    margin-bottom: 10px;
+}
+
+.clinic_item {
+    padding: 5px
+}
+
+.clinic_item > h4 {
+    margin-bottom: 10px;
+}
+
+.clinic_item:not(:last-child) {
+    border-bottom: 1px solid #B9DAFF;
+}
+
+.clinic_item:hover {
+    background-color: #DFEFFF;
+    cursor: pointer;
+}
+
+.clinic_item__selected {
+    background-color: #DFEFFF;
+}
+
+.clinics_map {
+    width: 40vw;
+    height: 50vh;
+    border: 1px solid black;
+}
