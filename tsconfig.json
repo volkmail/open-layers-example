@@ -21,13 +21,13 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@assets/*": ["src/assets/**/*"]
+      "@assets/*": ["src/assets/*"]
     }
   },
   "include": [
     "src"
   ],
   "exclude": [
-    "src/Map/index.jsx"
+    "src/Map/index.tsx"
   ]
 }

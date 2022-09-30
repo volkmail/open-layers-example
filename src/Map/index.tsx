@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
+//@ts-ignore
 import style from './map.module.css';
+//@ts-ignore
 import MarkerImg from '../assets/marker32.png';
+//@ts-ignore
 import SelectedMarkerImg from '../assets/selectedMarker32.png';
 import OlMap from "ol/Map";
 import OlView from "ol/View";
@@ -10,15 +13,16 @@ import VectorLayer from "ol/layer/Vector";
 import VectorSource from "ol/source/Vector";
 import RegularShape from "ol/style/RegularShape";
 import { Icon, Style, Fill } from "ol/style";
-import Stroke from 'ol/style/Stroke';
-import { Circle } from "ol/geom";
+import { Geometry } from "ol/geom";
 import {Feature} from "ol";
 import {Point} from "ol/geom";
-import {MapPropsType} from "./types";
-import {fromLonLat, transform} from "ol/proj";
+import {MapPropsType, MapStateType} from "./types";
+import { transform } from "ol/proj";
 import Text from 'ol/style/Text';
+import { ClinicType } from "src/Clinics/types";
+import { isMap } from "src/utils";
 
-const defaultStyle = new Style({
+const defaultStyle: Style = new Style({
   image: new Icon({
     anchor: [0.5, 0.5],
     anchorXUnits: "fraction",
@@ -27,7 +31,7 @@ const defaultStyle = new Style({
   })
 });
 
-const selectStyle = new Style({
+const selectStyle: Style = new Style({
   image: new Icon({
     anchor: [0.5, 0.5],
     anchorXUnits: "fraction",
@@ -36,7 +40,7 @@ const selectStyle = new Style({
   })
 });
 
-const tooltipStyle = new Style({
+const tooltipStyle: Style = new Style({
   text: new Text({
     font: "14px Calibri,sans-serif",
     fill: new Fill({
@@ -61,13 +65,13 @@ const tooltipStyle = new Style({
   geometry: new Point([])
 });
 
-const Map = (props) => {
-    const [state, setState] = useState({
+const Map: React.FC<MapPropsType> = (props) => {
+    const [state, setState] = useState<MapStateType>({
         center: [15037014.27335283, 6186134.711730205],
         zoom: 12.6,
     });
 
-    const map = useRef(null);
+    const map = useRef<OlMap|null>(null);
 
     //Эффект инициализации карты
     useEffect(() => {
@@ -90,60 +94,67 @@ const Map = (props) => {
           controls: [],
         });
 
-        // Обработчики событий на карте
-        map.current.on("moveend", () =>
-          setState({
-            center: map.current.getView().getCenter(),
-            zoom: map.current.getView().getZoom(),
-          })
-        );
-        map.current.on("click", (e) =>
-          console.log(transform(e.coordinate, "EPSG:4326", "EPSG:4326"))
-        );   
+        if (isMap(map)) {
+          // Обработчики событий на карте
+          map.current.on("moveend", () =>
+            setState((prevState) => {return {
+              center: map.current.getView().getCenter() || prevState.center,
+              zoom: map.current.getView().getZoom() as number,
+            }})
+          );
+          map.current.on("click", (e) =>
+            console.log(transform(e.coordinate, "EPSG:4326", "EPSG:4326"))
+          );
 
-        let selectedMarker = null;
-        let currentStyle = null;
-        map.current.on("pointermove", function (e) {
-          if (selectedMarker !== null) {
-            selectedMarker.setStyle(currentStyle[0]);
-            selectedMarker = null;
-          }
+          let selectedMarker: Feature<Point> | null = null;
+          let currentStyle: Style[] | null = null;
+          map.current.on("pointermove", function (e) {
+            if (selectedMarker !== null && currentStyle !== null) {
+              selectedMarker.setStyle(currentStyle[0]);
+              selectedMarker = null;
+            }
 
-          map.current.forEachFeatureAtPixel(e.pixel, function (feature) {
-            selectedMarker = feature;
+            map.current.forEachFeatureAtPixel(e.pixel, function (feature) {
+              selectedMarker = feature as Feature<Point>;
 
-            tooltipStyle.getGeometry().setCoordinates(e.coordinate);
-            tooltipStyle.getText().setText(feature.get("name"));
+              (tooltipStyle.getGeometry() as Point).setCoordinates(e.coordinate);
+              tooltipStyle.getText().setText(feature.get("name"));
 
-            currentStyle = [feature.get('selected') ? selectStyle : defaultStyle, tooltipStyle]
+              currentStyle = [
+                selectedMarker.get("selected") ? selectStyle : defaultStyle,
+                tooltipStyle,
+              ];
 
-            feature.setStyle(currentStyle);
+              selectedMarker.setStyle(currentStyle);
 
-            return true;
-          });
-        });
-
-        map.current.on('singleclick', function(e) {
-            map.current.forEachFeatureAtPixel(e.pixel, function(feature) {
-              props.setFocusOnClinic(feature.get('id'));
+              return true;
             });
           });
-      }
+
+          map.current.on("singleclick", function (e) {
+            map.current.forEachFeatureAtPixel(e.pixel, function (feature) {
+              props.setFocusOnClinic(feature.get("id"));
+            });
+          });
+        }
+      }       
     }, []);
 
     //for drag Effect, Обновляем координаты карты
     useEffect(()=>{
+      if(isMap(map)){
         const mapView = map.current.getView();
         mapView.setCenter(state.center);
         mapView.setZoom(state.zoom);
+      }      
     }, [state.center, state.zoom]);
 
     //Будем рисовать маркеры в зависимоти от пропсов с объектами (props.clinicList) для указания маркеров на карте
     useEffect(()=>{
         if (map.current) {   
-          let markers = [];
+          let markers: Feature<Point>[] = [];
           
-          props.clinicList.forEach((el) => {
+          props.clinicList.forEach((el: ClinicType) => {
             const feature = new Feature({
               geometry: new Point([el.addressLat, el.addressLon]),
               id: el.id,
@@ -155,19 +166,17 @@ const Map = (props) => {
             el.selected && setState((prevState) => {return {...prevState, center: [el.addressLat, el.addressLon]}})
             markers.push(feature);
           });
-
-          const currentMarkerLayer = map.current.getLayers().getArray().find((layer) => layer.getProperties().name === 'Markers');
+          const currentMarkerLayer: VectorLayer<VectorSource<Geometry>> | undefined = map.current.getLayers().getArray()[1] as VectorLayer<VectorSource<Geometry>>;
 
           // Смотрим есть ли у нас слой маркеров, если есть обновляем features в нем, иначе создаем новый слой
-          if(currentMarkerLayer){
-            currentMarkerLayer.getSource().clear();
-            currentMarkerLayer.getSource().addFeatures([...markers]);
+          if(currentMarkerLayer !== undefined){
+            currentMarkerLayer.getSource()!.clear();
+            currentMarkerLayer.getSource()!.addFeatures([...markers]);
           } else {
-            let newMarkerLayer = new VectorLayer({
+            let newMarkerLayer: VectorLayer<VectorSource<Geometry>> = new VectorLayer({
               source: new VectorSource({
                 features: [...markers],
               }),
-              name: 'Markers'
             });
             map.current.addLayer(newMarkerLayer);
           }         

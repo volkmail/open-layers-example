@@ -1,10 +1,13 @@
+import { Coordinate } from "ol/coordinate";
+import { ClinicType } from "src/Clinics/types";
+
 type MapPropsType = {
-    markers: Array<{
-        coordinates: [number, number],
-        name: string
-    }>;
-    focusCoordinates: [number, number];
+    clinicList: ClinicType[];
+    setFocusOnClinic: (id: string) => void;
 };
-type MapStateType = {};
+type MapStateType = {
+    center: Coordinate,
+    zoom: number,
+};
 
 export type {MapPropsType, MapStateType}
